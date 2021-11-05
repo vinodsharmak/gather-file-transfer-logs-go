@@ -16,36 +16,28 @@ func Log(s string) {
 	level := os.Getenv("level")
 	instance := os.Getenv("instance")
 
+	contextLogger := logrus.WithFields(logrus.Fields{
+		"instance": instance,
+	})
+
 	switch level {
 	case "info":
-		logrus.WithFields(logrus.Fields{
-			"instance": instance,
-		}).Info(s)
+		contextLogger.Info(s)
 
 	case "error":
-		logrus.WithFields(logrus.Fields{
-			"instance": instance,
-		}).Error(s)
+		contextLogger.Error(s)
 
 	case "warning":
-		logrus.WithFields(logrus.Fields{
-			"instance": instance,
-		}).Warning(s)
+		contextLogger.Warning(s)
 
 	case "debug":
-		logrus.WithFields(logrus.Fields{
-			"instance": instance,
-		}).Debug(s)
+		contextLogger.Debug(s)
 
 	case "panic":
-		logrus.WithFields(logrus.Fields{
-			"instance": instance,
-		}).Panic(s)
+		contextLogger.Panic(s)
 
 	default:
-		logrus.WithFields(logrus.Fields{
-			"instance": instance,
-		}).Info(s)
+		contextLogger.Info(s)
 	}
 
 }
