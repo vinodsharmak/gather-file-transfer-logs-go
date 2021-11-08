@@ -9,7 +9,7 @@ import (
 
 var Logger *logrus.Entry
 
-const LOG_FILE = "tmp/logrus.log"
+const LOG_FILE = "tmp/service_logs.log"
 
 func init() {
 	godotenv.Load(".env")
