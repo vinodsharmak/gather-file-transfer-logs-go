@@ -9,6 +9,8 @@ import (
 
 var Logger *logrus.Entry
 
+const LOG_FILE = "tmp/logrus.log"
+
 func init() {
 	godotenv.Load(".env")
 	level := os.Getenv("level")
@@ -26,4 +28,16 @@ func init() {
 	Logger = logger.WithFields(logrus.Fields{
 		"instance": instance,
 	})
+
+	if _, err := os.Stat("tmp"); os.IsNotExist(err) {
+		err = os.Mkdir("tmp", 0755)
+		if err != nil {
+			Logger.Errorf("Error in creating tmp directory: %s", err)
+		}
+	}
+	file, err := os.OpenFile(LOG_FILE, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0755)
+	if err != nil {
+		logger.Fatal("Error in writing logs to file: %s", err)
+	}
+	logger.SetOutput(file)
 }
