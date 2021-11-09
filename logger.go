@@ -43,3 +43,7 @@ func init() {
 	}
 	logger.SetOutput(io.MultiWriter(logWriters...))
 }
+
+func CloseLogFile(file *os.File) {
+	file.Close()
+}
