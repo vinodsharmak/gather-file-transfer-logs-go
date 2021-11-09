@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 
@@ -28,6 +29,7 @@ func init() {
 		"instance": instance,
 	})
 
+	logWriters := []io.Writer{os.Stdout}
 	cacheDir, err := os.UserCacheDir()
 	if err != nil {
 		logger.Errorf("Get user cache dir: %s", err)
@@ -36,6 +38,8 @@ func init() {
 	file, err := os.OpenFile(logFilePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0755)
 	if err != nil {
 		logger.Fatal("Error in writing logs to logfile: %s", err)
+	} else {
+		logWriters = append(logWriters, file)
 	}
-	logger.SetOutput(file)
+	logger.SetOutput(io.MultiWriter(logWriters...))
 }
