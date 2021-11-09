@@ -3,12 +3,13 @@ package logger
 import (
 	"os"
 
-	"bitbucket.org/gath3rio/gather-service-logs/constants"
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
 )
 
 var Logger *logrus.Entry
+
+const LOG_FILE = "tmp/service_logs.log"
 
 func init() {
 	godotenv.Load(".env")
@@ -34,7 +35,7 @@ func init() {
 			Logger.Errorf("Error in creating tmp directory: %s", err)
 		}
 	}
-	file, err := os.OpenFile(constants.LOG_FILE, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0755)
+	file, err := os.OpenFile(LOG_FILE, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0755)
 	if err != nil {
 		logger.Fatal("Error in writing logs to file: %s", err)
 	}
