@@ -14,7 +14,7 @@ type ftLogger struct {
 	logFile *os.File
 }
 
-var Logger *ftLogger
+var Logger ftLogger
 
 func init() {
 	godotenv.Load(".env")
