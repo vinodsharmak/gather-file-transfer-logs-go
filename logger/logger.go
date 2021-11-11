@@ -12,12 +12,13 @@ var Logger FtLogger
 
 func init() {
 	godotenv.Load(".env")
-	level, ok := os.LookupEnv("level")
+	level, ok := os.LookupEnv("LOG_LEVEL")
 	if !ok {
 		level = "debug"
 	}
-	instance, ok := os.LookupEnv("instance")
+	instance, ok := os.LookupEnv("LOG_INSTANCE")
 	if !ok {
+		logrus.Warning("not found LOG_INSTANCE environment variable")
 		instance = "anonymous raccoon"
 	}
 
