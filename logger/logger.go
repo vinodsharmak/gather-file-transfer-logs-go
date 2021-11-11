@@ -12,13 +12,19 @@ var Logger FtLogger
 
 func init() {
 	godotenv.Load(".env")
-	level := os.Getenv("level")
-	instance := os.Getenv("instance")
+	level, ok := os.LookupEnv("level")
+	if !ok {
+		level = "debug"
+	}
+	instance, ok := os.LookupEnv("instance")
+	if !ok {
+		instance = "anonymous raccoon"
+	}
 
 	logger := logrus.New()
 	lvl, err := logrus.ParseLevel(level)
 	if err != nil {
-		Logger.Logger.Errorf("parse level: %s", err)
+		logrus.Fatalf("parse level: %s", err)
 	}
 	logger.SetLevel(lvl)
 	logger.SetFormatter(&logrus.JSONFormatter{})
@@ -32,7 +38,7 @@ func init() {
 
 	Logger.logFile, err = prepLogFile("cpaasFileTransfer", "fts.log")
 	if err != nil {
-		Logger.Logger.Fatal("Error in writing logs to logfile: %s", err)
+		logrus.Fatalf("prepare logfile: %s", err)
 	} else {
 		logWriters = append(logWriters, Logger.logFile)
 	}
