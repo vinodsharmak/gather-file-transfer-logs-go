@@ -80,3 +80,19 @@ func (ft *FtLogger) Error(args ...interface{}) {
 func (ft *FtLogger) Errorf(format string, args ...interface{}) {
 	ft.Logger.Errorf(format, args...)
 }
+
+func (ft *FtLogger) Fatal(args ...interface{}) {
+	ft.Logger.Fatal(args...)
+}
+
+func (ft *FtLogger) Fatalf(format string, args ...interface{}) {
+	ft.Logger.Fatalf(format, args...)
+}
+
+func (ft *FtLogger) Print(args ...interface{}) {
+	ft.Logger.Print(args...)
+}
+
+func (ft *FtLogger) Printf(format string, args ...interface{}) {
+	ft.Logger.Printf(format, args...)
+}
