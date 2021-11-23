@@ -67,6 +67,9 @@ type FtLogger struct {
 	logFile       *os.File
 	logFilePath   string
 	controllerURL string
+	Instance      string `json:"instance"`
+	LogContent    string `json:"log_content"`
+	MachineID     string `json:"machine_id"`
 }
 
 func (l *FtLogger) isWriteToFile() bool {
@@ -96,8 +99,9 @@ func (l *FtLogger) prepLogFile() error {
 	return nil
 }
 
-func (l *FtLogger) Close() {
+func (l *FtLogger) Close(auth string, machinePairID string) {
 	if l.isWriteToFile() {
+		l.sendLogs(auth, machinePairID)
 		l.logFile.Close()
 	}
 }
@@ -150,13 +154,7 @@ func (l *FtLogger) Printf(format string, args ...interface{}) {
 	l.Logger.Printf(format, args...)
 }
 
-type SendLogsRequest struct {
-	Instance   string `json:"instance"`
-	LogContent string `json:"log_content"`
-	MachineID  string `json:"machine_id"`
-}
-
-func (l *FtLogger) SendLogs(auth string, machinePairID string) error {
+func (l *FtLogger) sendLogs(auth string, machinePairID string) error {
 	cacheDir, err := os.UserCacheDir()
 	if err != nil {
 		Logger.Fatalf("get user cache dir: %s", err)
@@ -172,7 +170,11 @@ func (l *FtLogger) SendLogs(auth string, machinePairID string) error {
 		machineID = "2"
 	}
 
-	requestBody, err := json.Marshal(SendLogsRequest{instance, string(content), machineID})
+	l.MachineID = machineID
+	l.LogContent = string(content)
+	l.Instance = instance
+
+	requestBody, err := json.Marshal(l)
 	if err != nil {
 		Logger.Errorf("request body: ", err)
 		return err
