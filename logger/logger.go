@@ -1,8 +1,12 @@
 package logger
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"net/http"
 	"os"
 	"path/filepath"
 
@@ -11,6 +15,7 @@ import (
 )
 
 var Logger FtLogger
+var instance string
 
 func init() {
 	godotenv.Load(".env")
@@ -18,7 +23,11 @@ func init() {
 	if !ok {
 		level = "debug"
 	}
-	instance, ok := os.LookupEnv("LOG_INSTANCE")
+	Logger.controllerURL, ok = os.LookupEnv("CONTROLLER_URL")
+	if !ok {
+		Logger.controllerURL = "https://dev-controller.gather.network"
+	}
+	instance, ok = os.LookupEnv("LOG_INSTANCE")
 	if !ok {
 		logrus.Warning("not found LOG_INSTANCE environment variable")
 		instance = "anonymous raccoon"
@@ -54,9 +63,10 @@ func init() {
 }
 
 type FtLogger struct {
-	Logger      *logrus.Entry
-	logFile     *os.File
-	logFilePath string
+	Logger        *logrus.Entry
+	logFile       *os.File
+	logFilePath   string
+	controllerURL string
 }
 
 func (l *FtLogger) isWriteToFile() bool {
@@ -138,4 +148,93 @@ func (l *FtLogger) Print(args ...interface{}) {
 
 func (l *FtLogger) Printf(format string, args ...interface{}) {
 	l.Logger.Printf(format, args...)
+}
+
+type SendLogsRequest struct {
+	Instance   string `json:"instance"`
+	LogContent string `json:"log_content"`
+	MachineID  string `json:"machine_id"`
+}
+
+func (l *FtLogger) SendLogs(auth string, machinePairID string) error {
+	cacheDir, err := os.UserCacheDir()
+	if err != nil {
+		Logger.Fatalf("get user cache dir: %s", err)
+		return err
+	}
+	logFilePath := filepath.Join(cacheDir, l.logFilePath)
+	content, err := ioutil.ReadFile(logFilePath)
+	if err != nil {
+		Logger.Fatalf("error in reading log file: ", err)
+	}
+	machineID := ""
+	if instance == "sender" || instance == "receiver" {
+		machineID = "2"
+	}
+
+	requestBody, err := json.Marshal(SendLogsRequest{instance, string(content), machineID})
+	if err != nil {
+		Logger.Errorf("request body: ", err)
+		return err
+	}
+	req, err := http.NewRequest("POST", Logger.controllerURL+"/api/v1/file_transfer/machine_pair/"+machinePairID+"/logs/", bytes.NewBuffer(requestBody))
+	if err != nil {
+		Logger.Errorf("creating request: ", err)
+		return err
+	}
+
+	req.Header.Add("Authorization-Token", auth)
+	req.Header.Add("Content-Type", "application/json")
+
+	client := http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		Logger.Errorf("sending request:", err)
+		return err
+	}
+	defer resp.Body.Close()
+
+	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		Logger.Errorf("unexpected error reading response:", err)
+		return err
+	}
+	var data map[string]interface{}
+	err = json.Unmarshal([]byte(bodyBytes), &data)
+	if err != nil {
+		Logger.Errorf("unexpected error in unmarshal:", err)
+		return err
+	}
+
+	switch resp.StatusCode {
+	case http.StatusOK:
+		Logger.Infof("Succes response: ", data["details"])
+		return nil
+
+	case http.StatusBadRequest:
+		if msg, ok := data["instance"]; ok {
+			Logger.Errorf("Failed: ", msg)
+			return fmt.Errorf("%v", msg)
+		}
+		if msg, ok := data["machine_id"]; ok {
+			Logger.Errorf("Failed: ", msg)
+			return fmt.Errorf("%v", msg)
+		}
+		return fmt.Errorf("Error: 400")
+
+	case http.StatusNotFound:
+		if msg, ok := data["detail"]; ok {
+			Logger.Errorf("Failed: ", msg)
+			return fmt.Errorf("%v", msg)
+		}
+		return fmt.Errorf("Error: 404")
+
+	case http.StatusUnauthorized:
+		if msg, ok := data["error"]; ok {
+			Logger.Errorf("Failed: ", msg)
+			return fmt.Errorf("%v", msg)
+		}
+		return fmt.Errorf("Error: 401")
+	}
+	return fmt.Errorf("Error Response: %v", resp.StatusCode)
 }
