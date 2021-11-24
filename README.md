@@ -1,6 +1,6 @@
-## Configuration
-
 ### Environment variables
+
+To configure the logger use the environment variables
 
 * LOG_LEVEL=The logger level.
 * LOG_INSTANCE=The instance name.
@@ -15,7 +15,7 @@ Logger.Close()
 
 ### Sending a log data to the controller
 
-To send the log data to controller you need to set up a sender before the logger close.
+To send the log data to the controller you need to set up a sender before closing the logger.
 Otherwise, it won't be sent.
 
 ```golang
