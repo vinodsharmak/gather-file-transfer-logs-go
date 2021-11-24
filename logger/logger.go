@@ -2,6 +2,7 @@ package logger
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -91,15 +92,28 @@ func (l *FtLogger) prepLogFile() error {
 	return nil
 }
 
-func (l *FtLogger) Close() {
+func (l *FtLogger) Close() error {
 	if l.isWriteToFile() {
-		l.logFile.Close()
+		err := l.logFile.Close()
+		if err != nil {
+			msg := fmt.Sprintf("close log file: %s", err)
+			logrus.Error(msg)
+
+			return errors.New(msg)
+		}
 
 		if l.sdr != nil {
 			err := l.sendLogs()
-			l.logger.Errorf("send logs: %s", err)
+			if err != nil {
+				msg := fmt.Sprintf("send logs: %s", err)
+				logrus.Error(msg)
+
+				return errors.New(msg)
+			}
 		}
 	}
+
+	return nil
 }
 
 func (l *FtLogger) sendLogs() error {
