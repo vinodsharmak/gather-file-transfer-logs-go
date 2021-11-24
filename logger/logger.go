@@ -1,12 +1,10 @@
 package logger
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"path/filepath"
 
@@ -22,10 +20,6 @@ func init() {
 	level, ok := os.LookupEnv("LOG_LEVEL")
 	if !ok {
 		level = "debug"
-	}
-	Logger.controllerURL, ok = os.LookupEnv("CONTROLLER_URL")
-	if !ok {
-		Logger.controllerURL = "https://dev-controller.gather.network"
 	}
 	instance, ok = os.LookupEnv("LOG_INSTANCE")
 	if !ok {
@@ -44,7 +38,7 @@ func init() {
 	logger.SetFormatter(&logrus.JSONFormatter{})
 	logger.SetOutput(os.Stdout)
 
-	Logger.Logger = logger.WithFields(logrus.Fields{
+	Logger.logger = logger.WithFields(logrus.Fields{
 		"instance": instance,
 	})
 
@@ -63,13 +57,11 @@ func init() {
 }
 
 type FtLogger struct {
-	Logger        *logrus.Entry
-	logFile       *os.File
-	logFilePath   string
-	controllerURL string
-	Instance      string `json:"instance"`
-	LogContent    string `json:"log_content"`
-	MachineID     string `json:"machine_id"`
+	logger      *logrus.Entry
+	logFile     *os.File
+	logFilePath string
+
+	sdr *sender
 }
 
 func (l *FtLogger) isWriteToFile() bool {
@@ -99,70 +91,18 @@ func (l *FtLogger) prepLogFile() error {
 	return nil
 }
 
-func (l *FtLogger) Close(auth string, machinePairID string) {
+func (l *FtLogger) Close() {
 	if l.isWriteToFile() {
-		l.sendLogs(auth, machinePairID)
 		l.logFile.Close()
+
+		if l.sdr != nil {
+			err := l.sendLogs()
+			l.logger.Errorf("send logs: %s", err)
+		}
 	}
 }
 
-func (l *FtLogger) Debug(args ...interface{}) {
-	l.Logger.Debug(args...)
-}
-
-func (l *FtLogger) Debugf(format string, args ...interface{}) {
-	l.Logger.Debugf(format, args...)
-}
-
-func (l *FtLogger) Info(args ...interface{}) {
-	l.Logger.Info(args...)
-}
-
-func (l *FtLogger) Infof(format string, args ...interface{}) {
-	l.Logger.Infof(format, args...)
-}
-
-func (l *FtLogger) Warning(args ...interface{}) {
-	l.Logger.Warning(args...)
-}
-
-func (l *FtLogger) Warningf(format string, args ...interface{}) {
-	l.Logger.Warningf(format, args...)
-}
-
-func (l *FtLogger) Error(args ...interface{}) {
-	l.Logger.Error(args...)
-}
-
-func (l *FtLogger) Errorf(format string, args ...interface{}) {
-	l.Logger.Errorf(format, args...)
-}
-
-func (l *FtLogger) Fatal(args ...interface{}) {
-	l.Logger.Fatal(args...)
-}
-
-func (l *FtLogger) Fatalf(format string, args ...interface{}) {
-	l.Logger.Fatalf(format, args...)
-}
-
-func (l *FtLogger) Print(args ...interface{}) {
-	l.Logger.Print(args...)
-}
-
-func (l *FtLogger) Printf(format string, args ...interface{}) {
-	l.Logger.Printf(format, args...)
-}
-
-type response struct {
-	Details   string `json:"details"`
-	Instance  string `json:"instance"`
-	MachineID string `json:"machine_id"`
-	Detail    string `json:"detail"`
-	Error     string `json:"error"`
-}
-
-func (l *FtLogger) sendLogs(auth string, machinePairID string) error {
+func (l *FtLogger) sendLogs() error {
 	cacheDir, err := os.UserCacheDir()
 	if err != nil {
 		return fmt.Errorf("get user cache dir: %v", err)
@@ -172,60 +112,77 @@ func (l *FtLogger) sendLogs(auth string, machinePairID string) error {
 	if err != nil {
 		return fmt.Errorf("error in reading log file: %v", err)
 	}
+
+	reqData := request{
+		MachineID:  machineID(),
+		LogContent: string(content),
+		Instance:   instance,
+	}
+	requestBody, err := json.Marshal(reqData)
+	if err != nil {
+		return fmt.Errorf("request body: %v", err)
+	}
+
+	return l.sdr.send(requestBody)
+}
+
+func (l *FtLogger) SetSender(accessToken, url, machinePairID string) {
+	l.sdr = newSender(accessToken, url, machinePairID)
+}
+
+func (l *FtLogger) Debug(args ...interface{}) {
+	l.logger.Debug(args...)
+}
+
+func (l *FtLogger) Debugf(format string, args ...interface{}) {
+	l.logger.Debugf(format, args...)
+}
+
+func (l *FtLogger) Info(args ...interface{}) {
+	l.logger.Info(args...)
+}
+
+func (l *FtLogger) Infof(format string, args ...interface{}) {
+	l.logger.Infof(format, args...)
+}
+
+func (l *FtLogger) Warning(args ...interface{}) {
+	l.logger.Warning(args...)
+}
+
+func (l *FtLogger) Warningf(format string, args ...interface{}) {
+	l.logger.Warningf(format, args...)
+}
+
+func (l *FtLogger) Error(args ...interface{}) {
+	l.logger.Error(args...)
+}
+
+func (l *FtLogger) Errorf(format string, args ...interface{}) {
+	l.logger.Errorf(format, args...)
+}
+
+func (l *FtLogger) Fatal(args ...interface{}) {
+	l.logger.Fatal(args...)
+}
+
+func (l *FtLogger) Fatalf(format string, args ...interface{}) {
+	l.logger.Fatalf(format, args...)
+}
+
+func (l *FtLogger) Print(args ...interface{}) {
+	l.logger.Print(args...)
+}
+
+func (l *FtLogger) Printf(format string, args ...interface{}) {
+	l.logger.Printf(format, args...)
+}
+
+func machineID() string {
 	machineID := ""
 	if instance == "sender" || instance == "receiver" {
 		machineID = "2"
 	}
 
-	l.MachineID = machineID
-	l.LogContent = string(content)
-	l.Instance = instance
-
-	requestBody, err := json.Marshal(l)
-	if err != nil {
-		return fmt.Errorf("request body: %v", err)
-	}
-	req, err := http.NewRequest("POST", Logger.controllerURL+"/api/v1/file_transfer/machine_pair/"+machinePairID+"/logs/", bytes.NewBuffer(requestBody))
-	if err != nil {
-		return fmt.Errorf("creating request: %v", err)
-	}
-
-	req.Header.Add("Authorization-Token", auth)
-	req.Header.Add("Content-Type", "application/json")
-
-	client := http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return fmt.Errorf("sending request: %v", err)
-	}
-	defer resp.Body.Close()
-
-	var data response
-	err = json.NewDecoder(resp.Body).Decode(&data)
-	if err != nil {
-		return fmt.Errorf("response: %v", err)
-	}
-
-	switch resp.StatusCode {
-	case http.StatusOK:
-		Logger.Infof("Succes response: ", data.Details)
-		return nil
-
-	case http.StatusBadRequest:
-		if data.Instance != "" {
-			return fmt.Errorf("error-400: %v", data.Instance)
-		}
-		if data.MachineID != "" {
-			return fmt.Errorf("error-400: %v", data.MachineID)
-		}
-		return fmt.Errorf("Error: 400")
-
-	case http.StatusNotFound:
-		return fmt.Errorf("error-404: %v", data.Detail)
-
-	case http.StatusUnauthorized:
-		return fmt.Errorf("error-401: %v", data.Error)
-
-	}
-	return fmt.Errorf("Error Response: %v", resp.StatusCode)
+	return machineID
 }
