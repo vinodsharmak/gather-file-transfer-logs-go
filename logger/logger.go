@@ -92,6 +92,14 @@ func (l *FtLogger) prepLogFile() error {
 	return nil
 }
 
+func (l *FtLogger) SetInstance(inst string) error {
+	instance = inst
+	if instance == "" {
+		return errors.New("instance not found (empty string)")
+	}
+	return nil
+}
+
 func (l *FtLogger) Close() error {
 	if l.isWriteToFile() {
 		err := l.logFile.Close()
