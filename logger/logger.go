@@ -9,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
 )
 
@@ -17,48 +16,14 @@ var Logger FtLogger
 var instance string
 
 func init() {
-	godotenv.Load(".env")
-	level, ok := os.LookupEnv("LOG_LEVEL")
-	if !ok {
-		level = "debug"
-	}
-	instance, ok = os.LookupEnv("LOG_INSTANCE")
-	if !ok {
-		logrus.Warning("not found LOG_INSTANCE environment variable")
-		instance = "anonymous raccoon"
-	}
-
-	Logger.logFilePath = os.Getenv("LOG_FILE_PATH")
-
-	logger := logrus.New()
-	lvl, err := logrus.ParseLevel(level)
-	if err != nil {
-		logrus.Fatalf("parse level: %s", err)
-	}
-	logger.SetLevel(lvl)
-	logger.SetFormatter(&logrus.JSONFormatter{})
-	logger.SetOutput(os.Stdout)
-
-	Logger.logger = logger.WithFields(logrus.Fields{
-		"instance": instance,
-	})
-
-	logWriters := []io.Writer{os.Stdout}
-
-	if Logger.isWriteToFile() {
-		err = Logger.prepLogFile()
-		if err != nil {
-			logrus.Fatalf("prepare logfile: %s", err)
-		} else {
-			logWriters = append(logWriters, Logger.logFile)
-		}
-	}
-
-	logger.SetOutput(io.MultiWriter(logWriters...))
+	Logger.logger = logrus.New()
+	Logger.logger.SetFormatter(&logrus.JSONFormatter{})
+	Logger.logger.SetOutput(os.Stdout)
 }
 
 type FtLogger struct {
-	logger      *logrus.Entry
+	logger      *logrus.Logger
+	loggerEntry *logrus.Entry
 	logFile     *os.File
 	logFilePath string
 
@@ -92,12 +57,39 @@ func (l *FtLogger) prepLogFile() error {
 	return nil
 }
 
-func (l *FtLogger) SetInstance(inst string) error {
-	instance = inst
+func (l *FtLogger) SetInstance(instance_ string) {
+	instance = instance_
 	if instance == "" {
-		return errors.New("instance not found (empty string)")
+		logrus.Warning("instance: empty string")
+		instance = "anonymous raccoon"
 	}
-	return nil
+	l.loggerEntry = l.logger.WithFields(logrus.Fields{
+		"instance": instance,
+	})
+}
+
+func (l *FtLogger) SetLevel(level_ string) {
+	lvl, err := logrus.ParseLevel(level_)
+	if err != nil {
+		logrus.Fatalf("parse level: %s", err)
+	}
+	l.logger.SetLevel(lvl)
+}
+
+func (l *FtLogger) SetLogFile(path string) {
+	l.logFilePath = path
+	logWriters := []io.Writer{os.Stdout}
+
+	if l.isWriteToFile() {
+		err := l.prepLogFile()
+		if err != nil {
+			logrus.Fatalf("prepare logfile: %s", err)
+		} else {
+			logWriters = append(logWriters, l.logFile)
+		}
+	}
+
+	l.logger.SetOutput(io.MultiWriter(logWriters...))
 }
 
 func (l *FtLogger) Close() error {
@@ -153,51 +145,51 @@ func (l *FtLogger) SetSender(accessToken, url, machinePairID string) {
 }
 
 func (l *FtLogger) Debug(args ...interface{}) {
-	l.logger.Debug(args...)
+	l.loggerEntry.Debug(args...)
 }
 
 func (l *FtLogger) Debugf(format string, args ...interface{}) {
-	l.logger.Debugf(format, args...)
+	l.loggerEntry.Debugf(format, args...)
 }
 
 func (l *FtLogger) Info(args ...interface{}) {
-	l.logger.Info(args...)
+	l.loggerEntry.Info(args...)
 }
 
 func (l *FtLogger) Infof(format string, args ...interface{}) {
-	l.logger.Infof(format, args...)
+	l.loggerEntry.Infof(format, args...)
 }
 
 func (l *FtLogger) Warning(args ...interface{}) {
-	l.logger.Warning(args...)
+	l.loggerEntry.Warning(args...)
 }
 
 func (l *FtLogger) Warningf(format string, args ...interface{}) {
-	l.logger.Warningf(format, args...)
+	l.loggerEntry.Warningf(format, args...)
 }
 
 func (l *FtLogger) Error(args ...interface{}) {
-	l.logger.Error(args...)
+	l.loggerEntry.Error(args...)
 }
 
 func (l *FtLogger) Errorf(format string, args ...interface{}) {
-	l.logger.Errorf(format, args...)
+	l.loggerEntry.Errorf(format, args...)
 }
 
 func (l *FtLogger) Fatal(args ...interface{}) {
-	l.logger.Fatal(args...)
+	l.loggerEntry.Fatal(args...)
 }
 
 func (l *FtLogger) Fatalf(format string, args ...interface{}) {
-	l.logger.Fatalf(format, args...)
+	l.loggerEntry.Fatalf(format, args...)
 }
 
 func (l *FtLogger) Print(args ...interface{}) {
-	l.logger.Print(args...)
+	l.loggerEntry.Print(args...)
 }
 
 func (l *FtLogger) Printf(format string, args ...interface{}) {
-	l.logger.Printf(format, args...)
+	l.loggerEntry.Printf(format, args...)
 }
 
 func machineID() string {
