@@ -17,26 +17,16 @@ var Logger FtLogger
 
 func init() {
 	godotenv.Load(".env")
-	level, ok := os.LookupEnv("LOG_LEVEL")
-	if !ok {
-		level = "debug"
-	}
-	instance, ok := os.LookupEnv("LOG_INSTANCE")
-	if !ok {
-		logrus.Warning("not found LOG_INSTANCE environment variable")
-		Logger.instance = "anonymous raccoon"
-	}
-
 	Logger.logger = logrus.New()
 
-	err := Logger.SetLevel(level)
+	err := Logger.SetLevel(os.Getenv("LOG_LEVEL"))
 	if err != nil {
 		logrus.Errorf("set level: %s", err)
 	}
 
 	Logger.logger.SetFormatter(&logrus.JSONFormatter{})
 	Logger.logger.SetOutput(os.Stdout)
-	Logger.SetInstance(instance)
+	Logger.SetInstance(os.Getenv("LOG_INSTANCE"))
 
 	err = Logger.SetLogFile(os.Getenv("LOG_FILE_PATH"))
 	if err != nil {
@@ -93,6 +83,9 @@ func (l *FtLogger) SetInstance(instance string) {
 }
 
 func (l *FtLogger) SetLevel(level string) error {
+	if level == "" {
+		level = "debug"
+	}
 	lvl, err := logrus.ParseLevel(level)
 	if err != nil {
 		return err
