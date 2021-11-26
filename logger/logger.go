@@ -9,16 +9,51 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
 )
 
 var Logger FtLogger
-var instance string
 
 func init() {
+	godotenv.Load(".env")
+	level, ok := os.LookupEnv("LOG_LEVEL")
+	if !ok {
+		level = "debug"
+	}
+	Logger.instance, ok = os.LookupEnv("LOG_INSTANCE")
+	if !ok {
+		logrus.Warning("not found LOG_INSTANCE environment variable")
+		Logger.instance = "anonymous raccoon"
+	}
+
+	Logger.logFilePath = os.Getenv("LOG_FILE_PATH")
+
 	Logger.logger = logrus.New()
+	lvl, err := logrus.ParseLevel(level)
+	if err != nil {
+		logrus.Fatalf("parse level: %s", err)
+	}
+	Logger.logger.SetLevel(lvl)
 	Logger.logger.SetFormatter(&logrus.JSONFormatter{})
 	Logger.logger.SetOutput(os.Stdout)
+
+	Logger.loggerEntry = Logger.logger.WithFields(logrus.Fields{
+		"instance": Logger.instance,
+	})
+
+	logWriters := []io.Writer{os.Stdout}
+
+	if Logger.isWriteToFile() {
+		err = Logger.prepLogFile()
+		if err != nil {
+			logrus.Fatalf("prepare logfile: %s", err)
+		} else {
+			logWriters = append(logWriters, Logger.logFile)
+		}
+	}
+
+	Logger.logger.SetOutput(io.MultiWriter(logWriters...))
 }
 
 type FtLogger struct {
@@ -26,6 +61,7 @@ type FtLogger struct {
 	loggerEntry *logrus.Entry
 	logFile     *os.File
 	logFilePath string
+	instance    string
 
 	sdr *sender
 }
@@ -57,19 +93,19 @@ func (l *FtLogger) prepLogFile() error {
 	return nil
 }
 
-func (l *FtLogger) SetInstance(instance_ string) {
-	if instance_ == "" {
+func (l *FtLogger) SetInstance(instance string) {
+	if instance == "" {
 		logrus.Warning("instance: empty string")
-		instance_ = "anonymous raccoon"
+		instance = "anonymous raccoon"
 	}
-	instance = instance_
+	l.instance = instance
 	l.loggerEntry = l.logger.WithFields(logrus.Fields{
 		"instance": instance,
 	})
 }
 
-func (l *FtLogger) SetLevel(level_ string) {
-	lvl, err := logrus.ParseLevel(level_)
+func (l *FtLogger) SetLevel(level string) {
+	lvl, err := logrus.ParseLevel(level)
 	if err != nil {
 		logrus.Fatalf("parse level: %s", err)
 	}
@@ -128,9 +164,9 @@ func (l *FtLogger) sendLogs() error {
 	}
 
 	reqData := request{
-		MachineID:  machineID(),
+		MachineID:  l.machineID(),
 		LogContent: string(content),
-		Instance:   instance,
+		Instance:   l.instance,
 	}
 	requestBody, err := json.Marshal(reqData)
 	if err != nil {
@@ -192,9 +228,9 @@ func (l *FtLogger) Printf(format string, args ...interface{}) {
 	l.loggerEntry.Printf(format, args...)
 }
 
-func machineID() string {
+func (l *FtLogger) machineID() string {
 	machineID := ""
-	if instance == "sender" || instance == "receiver" {
+	if l.instance == "sender" || l.instance == "receiver" {
 		machineID = "2"
 	}
 
