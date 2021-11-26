@@ -58,11 +58,11 @@ func (l *FtLogger) prepLogFile() error {
 }
 
 func (l *FtLogger) SetInstance(instance_ string) {
-	instance = instance_
-	if instance == "" {
+	if instance_ == "" {
 		logrus.Warning("instance: empty string")
-		instance = "anonymous raccoon"
+		instance_ = "anonymous raccoon"
 	}
+	instance = instance_
 	l.loggerEntry = l.logger.WithFields(logrus.Fields{
 		"instance": instance,
 	})
