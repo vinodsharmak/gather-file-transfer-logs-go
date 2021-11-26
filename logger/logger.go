@@ -21,39 +21,27 @@ func init() {
 	if !ok {
 		level = "debug"
 	}
-	Logger.instance, ok = os.LookupEnv("LOG_INSTANCE")
+	instance, ok := os.LookupEnv("LOG_INSTANCE")
 	if !ok {
 		logrus.Warning("not found LOG_INSTANCE environment variable")
 		Logger.instance = "anonymous raccoon"
 	}
 
-	Logger.logFilePath = os.Getenv("LOG_FILE_PATH")
-
 	Logger.logger = logrus.New()
-	lvl, err := logrus.ParseLevel(level)
+
+	err := Logger.SetLevel(level)
 	if err != nil {
-		logrus.Fatalf("parse level: %s", err)
+		logrus.Errorf("set level: %s", err)
 	}
-	Logger.logger.SetLevel(lvl)
+
 	Logger.logger.SetFormatter(&logrus.JSONFormatter{})
 	Logger.logger.SetOutput(os.Stdout)
+	Logger.SetInstance(instance)
 
-	Logger.loggerEntry = Logger.logger.WithFields(logrus.Fields{
-		"instance": Logger.instance,
-	})
-
-	logWriters := []io.Writer{os.Stdout}
-
-	if Logger.isWriteToFile() {
-		err = Logger.prepLogFile()
-		if err != nil {
-			logrus.Fatalf("prepare logfile: %s", err)
-		} else {
-			logWriters = append(logWriters, Logger.logFile)
-		}
+	err = Logger.SetLogFile(os.Getenv("LOG_FILE_PATH"))
+	if err != nil {
+		logrus.Errorf("set log file: %s", err)
 	}
-
-	Logger.logger.SetOutput(io.MultiWriter(logWriters...))
 }
 
 type FtLogger struct {
@@ -104,28 +92,31 @@ func (l *FtLogger) SetInstance(instance string) {
 	})
 }
 
-func (l *FtLogger) SetLevel(level string) {
+func (l *FtLogger) SetLevel(level string) error {
 	lvl, err := logrus.ParseLevel(level)
 	if err != nil {
-		logrus.Fatalf("parse level: %s", err)
+		return err
 	}
+
 	l.logger.SetLevel(lvl)
+	return nil
 }
 
-func (l *FtLogger) SetLogFile(path string) {
+func (l *FtLogger) SetLogFile(path string) error {
 	l.logFilePath = path
 	logWriters := []io.Writer{os.Stdout}
 
 	if l.isWriteToFile() {
 		err := l.prepLogFile()
 		if err != nil {
-			logrus.Fatalf("prepare logfile: %s", err)
+			return err
 		} else {
 			logWriters = append(logWriters, l.logFile)
 		}
 	}
 
 	l.logger.SetOutput(io.MultiWriter(logWriters...))
+	return nil
 }
 
 func (l *FtLogger) Close() error {
