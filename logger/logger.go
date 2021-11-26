@@ -110,9 +110,8 @@ func (l *FtLogger) SetLogFile(path string) error {
 		err := l.prepLogFile()
 		if err != nil {
 			return err
-		} else {
-			logWriters = append(logWriters, l.logFile)
 		}
+		logWriters = append(logWriters, l.logFile)
 	}
 
 	l.logger.SetOutput(io.MultiWriter(logWriters...))
