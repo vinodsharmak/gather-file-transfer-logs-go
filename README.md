@@ -45,6 +45,12 @@ Otherwise, it won't be sent.
 
 ```golang
 
-Logger.SetSender(accessToken, url, machinePairID)
+Logger.SetSender(accessToken, url, machinePairID, machineID)
 
 ```
+
+Case worker_node request: accessToken value request must be from machine pair
+
+Case receiver request: accessToken value request must be from machine metadata
+
+Case sender request: accessToken value request must be from machine metadata
