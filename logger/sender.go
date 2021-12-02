@@ -11,6 +11,7 @@ type sender struct {
 	accessToken   string
 	url           string
 	machinePairID string
+	machineID     string
 }
 
 type request struct {
@@ -27,11 +28,12 @@ type response struct {
 	Error     string `json:"error"`
 }
 
-func newSender(accessToken, url, machinePairID string) *sender {
+func newSender(accessToken, url, machinePairID string, machineID string) *sender {
 	return &sender{
 		accessToken:   accessToken,
 		url:           url,
 		machinePairID: machinePairID,
+		machineID:     machineID,
 	}
 }
 
@@ -60,7 +62,7 @@ func (s *sender) send(requestBody []byte) error {
 
 	switch resp.StatusCode {
 	case http.StatusOK:
-		Logger.Infof("Succes response: ", data.Details)
+		Logger.Infof("Success response: ", data.Details)
 		return nil
 
 	case http.StatusBadRequest:

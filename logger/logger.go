@@ -159,8 +159,8 @@ func (l *FtLogger) sendLogs() error {
 	return l.sdr.send(requestBody)
 }
 
-func (l *FtLogger) SetSender(accessToken, url, machinePairID string) {
-	l.sdr = newSender(accessToken, url, machinePairID)
+func (l *FtLogger) SetSender(accessToken, url, machinePairID string, machineID string) {
+	l.sdr = newSender(accessToken, url, machinePairID, machineID)
 }
 
 func (l *FtLogger) Debug(args ...interface{}) {
@@ -214,7 +214,7 @@ func (l *FtLogger) Printf(format string, args ...interface{}) {
 func (l *FtLogger) machineID() string {
 	machineID := ""
 	if l.instance == "sender" || l.instance == "receiver" {
-		machineID = "2"
+		machineID = l.sdr.machineID
 	}
 
 	return machineID
