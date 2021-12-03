@@ -113,14 +113,6 @@ func (l *FtLogger) SetLogFile(path string) error {
 
 func (l *FtLogger) Close() error {
 	if l.isWriteToFile() {
-		err := l.logFile.Close()
-		if err != nil {
-			msg := fmt.Sprintf("close log file: %s", err)
-			logrus.Error(msg)
-
-			return errors.New(msg)
-		}
-
 		if l.sdr != nil {
 			err := l.sendLogs()
 			if err != nil {
@@ -129,11 +121,24 @@ func (l *FtLogger) Close() error {
 
 				return errors.New(msg)
 			}
-			err = os.Truncate(l.logFilePath, 0)
+			cacheDir, err := os.UserCacheDir()
+			if err != nil {
+				return fmt.Errorf("get user cache dir: %s", err)
+			}
+			path := filepath.Join(cacheDir, l.logFilePath)
+			err = os.Truncate(path, 0)
 			if err != nil {
 				logrus.Error("truncating log file: ", err)
 			}
 		}
+		err := l.logFile.Close()
+		if err != nil {
+			msg := fmt.Sprintf("close log file: %s", err)
+			logrus.Error(msg)
+
+			return errors.New(msg)
+		}
+
 	}
 
 	return nil
