@@ -129,6 +129,10 @@ func (l *FtLogger) Close() error {
 
 				return errors.New(msg)
 			}
+			err = os.Truncate(l.logFilePath, 0)
+			if err != nil {
+				logrus.Error("truncating log file: ", err)
+			}
 		}
 	}
 
