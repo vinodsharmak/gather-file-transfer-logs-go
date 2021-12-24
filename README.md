@@ -39,6 +39,13 @@ Logger.Close()
 
 ### Sending a log data to the controller
 
+```golang
+
+Logger.SendLogsToController() error
+
+```
+
+
 To send the log data to the controller you need to set up a sender before closing the logger.
 
 Otherwise, it won't be sent.
