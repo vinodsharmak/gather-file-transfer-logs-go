@@ -112,6 +112,21 @@ func (l *FtLogger) SetLogFile(path string) error {
 }
 
 func (l *FtLogger) Close() error {
+	l.SendLogsToController()
+	if l.isWriteToFile() {
+		err := l.logFile.Close()
+		if err != nil {
+			msg := fmt.Sprintf("close log file: %s", err)
+			logrus.Error(msg)
+
+			return errors.New(msg)
+		}
+
+	}
+
+	return nil
+}
+func (l *FtLogger) SendLogsToController() error {
 	if l.isWriteToFile() {
 		if l.sdr != nil {
 			err := l.sendLogs()
@@ -131,16 +146,7 @@ func (l *FtLogger) Close() error {
 				logrus.Error("truncating log file: ", err)
 			}
 		}
-		err := l.logFile.Close()
-		if err != nil {
-			msg := fmt.Sprintf("close log file: %s", err)
-			logrus.Error(msg)
-
-			return errors.New(msg)
-		}
-
 	}
-
 	return nil
 }
 
