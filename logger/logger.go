@@ -126,6 +126,7 @@ func (l *FtLogger) Close() error {
 
 	return nil
 }
+
 func (l *FtLogger) SendLogsToController() error {
 	if l.isWriteToFile() {
 		if l.sdr != nil {

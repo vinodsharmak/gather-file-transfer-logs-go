@@ -17,7 +17,7 @@ type sender struct {
 type request struct {
 	Instance   string `json:"instance"`
 	LogContent string `json:"log_content"`
-	MachineID  string `json:"machine_id"`
+	MachineID  string `json:"machine_id,omitempty"`
 }
 
 type response struct {
@@ -62,7 +62,7 @@ func (s *sender) send(requestBody []byte) error {
 
 	switch resp.StatusCode {
 	case http.StatusOK:
-		Logger.Infof("Success response: ", data.Details)
+		Logger.Infof("Success response: %s", data.Details)
 		return nil
 
 	case http.StatusBadRequest:
