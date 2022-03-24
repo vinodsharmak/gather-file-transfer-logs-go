@@ -55,6 +55,7 @@ func (s *sender) send(requestBody []byte) error {
 	defer resp.Body.Close()
 
 	var data response
+
 	err = json.NewDecoder(resp.Body).Decode(&data)
 	if err != nil {
 		return fmt.Errorf("response: %v", err)
