@@ -25,13 +25,14 @@ func init() {
 	}
 
 	Logger.logger.SetFormatter(&logrus.JSONFormatter{})
-	Logger.logger.SetOutput(os.Stdout)
+
 	Logger.SetInstance(os.Getenv("LOG_INSTANCE"))
 
-	err = Logger.SetLogFile(os.Getenv("LOG_FILE_PATH"))
+	err = Logger.SetLoggerOutput(os.Getenv("LOG_FILE_PATH"))
 	if err != nil {
 		logrus.Errorf("set log file: %s", err)
 	}
+
 }
 
 type FtLogger struct {
@@ -40,8 +41,8 @@ type FtLogger struct {
 	logFile     *os.File
 	logFilePath string
 	instance    string
-
-	sdr *sender
+	debugger    bool
+	sdr         *sender
 }
 
 func (l *FtLogger) isWriteToFile() bool {
@@ -71,6 +72,12 @@ func (l *FtLogger) prepLogFile() error {
 	return nil
 }
 
+func (l *FtLogger) SetDebugMode(value string) {
+	if value == "true" {
+		l.debugger = true
+	}
+}
+
 func (l *FtLogger) SetInstance(instance string) {
 	if instance == "" {
 		logrus.Warning("instance: empty string")
@@ -95,19 +102,23 @@ func (l *FtLogger) SetLevel(level string) error {
 	return nil
 }
 
-func (l *FtLogger) SetLogFile(path string) error {
+func (l *FtLogger) SetLoggerOutput(path string) error {
+	if len(path) == 0 {
+		return nil
+	}
 	l.logFilePath = path
-	logWriters := []io.Writer{os.Stdout}
-
 	if l.isWriteToFile() {
 		err := l.prepLogFile()
 		if err != nil {
 			return err
 		}
-		logWriters = append(logWriters, l.logFile)
 	}
-
+	logWriters := []io.Writer{l.logFile}
+	if l.debugger {
+		logWriters = append(logWriters, os.Stdout)
+	}
 	l.logger.SetOutput(io.MultiWriter(logWriters...))
+
 	return nil
 }
 
@@ -132,7 +143,7 @@ func (l *FtLogger) SendLogsToController() error {
 		if l.sdr != nil {
 			err := l.sendLogs()
 			if err != nil {
-				msg := fmt.Sprintf("send logs: %s", err)
+				msg := fmt.Sprintf("send logs to controller: %s", err)
 				logrus.Error(msg)
 
 				return errors.New(msg)
@@ -161,12 +172,12 @@ func (l *FtLogger) sendLogs() error {
 	if err != nil {
 		return fmt.Errorf("error in reading log file: %v", err)
 	}
-
 	reqData := request{
 		MachineID:  l.machineID(),
 		LogContent: string(content),
 		Instance:   l.instance,
 	}
+
 	requestBody, err := json.Marshal(reqData)
 	if err != nil {
 		return fmt.Errorf("request body: %v", err)
