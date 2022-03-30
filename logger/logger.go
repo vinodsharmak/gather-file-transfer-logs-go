@@ -16,10 +16,13 @@ import (
 var Logger FtLogger
 
 func init() {
-	godotenv.Load(".env")
+	err := godotenv.Load(".env")
+	if err != nil {
+		logrus.Warnln("unable to read .env, falling back to os variables")
+	}
 	Logger.logger = logrus.New()
 
-	err := Logger.SetLevel(os.Getenv("LOG_LEVEL"))
+	err = Logger.SetLevel(os.Getenv("LOG_LEVEL"))
 	if err != nil {
 		logrus.Errorf("set level: %s", err)
 	}
@@ -32,7 +35,6 @@ func init() {
 	if err != nil {
 		logrus.Errorf("set log file: %s", err)
 	}
-
 }
 
 type FtLogger struct {
@@ -52,19 +54,19 @@ func (l *FtLogger) isWriteToFile() bool {
 func (l *FtLogger) prepLogFile() error {
 	cacheDir, err := os.UserCacheDir()
 	if err != nil {
-		return fmt.Errorf("get user cache dir: %s", err)
+		return fmt.Errorf("get user cache dir: %w", err)
 	}
 
 	logFileDir := filepath.Dir(l.logFilePath)
 	logFileDirPath := filepath.Join(cacheDir, logFileDir)
-	err = os.MkdirAll(logFileDirPath, 0755)
+	err = os.MkdirAll(logFileDirPath, 0o755)
 	if err != nil {
-		return fmt.Errorf("make \"%s\" dir: %s", logFileDirPath, err)
+		return fmt.Errorf("make \"%s\" dir: %w", logFileDirPath, err)
 	}
 
 	logFilePath := filepath.Join(cacheDir, l.logFilePath)
 
-	l.logFile, err = os.OpenFile(logFilePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0755)
+	l.logFile, err = os.OpenFile(logFilePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o755)
 	if err != nil {
 		return err
 	}
@@ -123,7 +125,10 @@ func (l *FtLogger) SetLoggerOutput(path string) error {
 }
 
 func (l *FtLogger) Close() error {
-	l.SendLogsToController()
+	err := l.SendLogsToController()
+	if err != nil {
+		logrus.Errorln(err)
+	}
 	if l.isWriteToFile() {
 		err := l.logFile.Close()
 		if err != nil {
@@ -132,7 +137,6 @@ func (l *FtLogger) Close() error {
 
 			return errors.New(msg)
 		}
-
 	}
 
 	return nil
@@ -150,7 +154,7 @@ func (l *FtLogger) SendLogsToController() error {
 			}
 			cacheDir, err := os.UserCacheDir()
 			if err != nil {
-				return fmt.Errorf("get user cache dir: %s", err)
+				return fmt.Errorf("get user cache dir: %w", err)
 			}
 			path := filepath.Join(cacheDir, l.logFilePath)
 			err = os.Truncate(path, 0)
@@ -165,12 +169,12 @@ func (l *FtLogger) SendLogsToController() error {
 func (l *FtLogger) sendLogs() error {
 	cacheDir, err := os.UserCacheDir()
 	if err != nil {
-		return fmt.Errorf("get user cache dir: %v", err)
+		return fmt.Errorf("get user cache dir: %w", err)
 	}
 	logFilePath := filepath.Join(cacheDir, l.logFilePath)
 	content, err := ioutil.ReadFile(logFilePath)
 	if err != nil {
-		return fmt.Errorf("error in reading log file: %v", err)
+		return fmt.Errorf("error in reading log file: %w", err)
 	}
 	reqData := request{
 		MachineID:  l.machineID(),
@@ -180,7 +184,7 @@ func (l *FtLogger) sendLogs() error {
 
 	requestBody, err := json.Marshal(reqData)
 	if err != nil {
-		return fmt.Errorf("request body: %v", err)
+		return fmt.Errorf("request body: %w", err)
 	}
 
 	return l.sdr.send(requestBody)
