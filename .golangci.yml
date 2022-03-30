@@ -28,8 +28,7 @@ linters:
     - errorlint
     - errchkjson
     - exhaustive
-    #  funlen can be enabled once our code is clear enough to persist this
-    # - funlen
+    - funlen
     - gocritic
     - gocyclo
     - gofmt
@@ -50,27 +49,26 @@ linters:
     - stylecheck
     - typecheck
     - unconvert
-    # unparam can be enabled once pkg/util/helper.go:69:19 and pkg/httpserver/helpers.go:62:73 are fixed
-    # - unparam
+    - unparam
     - unused
     - varcheck
     - whitespace
     - gofumpt
     - grouper
-    # - wrapcheck
+    - wrapcheck
     - bidichk
     - durationcheck
     - forcetypeassert
 
   # (optional)
-  # - asciicheck
-  # - gochecknoglobals
-  # - gocognit
-    # - godot
+    - asciicheck
+    # - gochecknoglobals
+    # - gocognit
+    - godot
     - godox
-  # - goerr113
-  # - maligned
-  # - nestif
-  # - prealloc
-  # - testpackage
-  # - wsl
+    # - goerr113
+    - maligned
+    - nestif
+    - prealloc
+    # - testpackage
+    # - wsl

@@ -68,7 +68,7 @@ func (l *FtLogger) prepLogFile() error {
 
 	l.logFile, err = os.OpenFile(logFilePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o755)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to open the file: %w", err)
 	}
 
 	return nil
@@ -97,7 +97,7 @@ func (l *FtLogger) SetLevel(level string) error {
 	}
 	lvl, err := logrus.ParseLevel(level)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to parse level: %w", err)
 	}
 
 	l.logger.SetLevel(lvl)
@@ -143,24 +143,22 @@ func (l *FtLogger) Close() error {
 }
 
 func (l *FtLogger) SendLogsToController() error {
-	if l.isWriteToFile() {
-		if l.sdr != nil {
-			err := l.sendLogs()
-			if err != nil {
-				msg := fmt.Sprintf("send logs to controller: %s", err)
-				logrus.Error(msg)
+	if l.isWriteToFile() && l.sdr != nil {
+		err := l.sendLogs()
+		if err != nil {
+			msg := fmt.Sprintf("send logs to controller: %s", err)
+			logrus.Error(msg)
 
-				return errors.New(msg)
-			}
-			cacheDir, err := os.UserCacheDir()
-			if err != nil {
-				return fmt.Errorf("get user cache dir: %w", err)
-			}
-			path := filepath.Join(cacheDir, l.logFilePath)
-			err = os.Truncate(path, 0)
-			if err != nil {
-				logrus.Error("truncating log file: ", err)
-			}
+			return errors.New(msg)
+		}
+		cacheDir, err := os.UserCacheDir()
+		if err != nil {
+			return fmt.Errorf("get user cache dir: %w", err)
+		}
+		path := filepath.Join(cacheDir, l.logFilePath)
+		err = os.Truncate(path, 0)
+		if err != nil {
+			logrus.Error("truncating log file: ", err)
 		}
 	}
 	return nil
