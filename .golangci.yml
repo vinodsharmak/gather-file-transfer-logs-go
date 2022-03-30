@@ -67,7 +67,7 @@ linters:
     - godot
     - godox
     # - goerr113
-    - maligned
+    # - maligned
     - nestif
     - prealloc
     # - testpackage
