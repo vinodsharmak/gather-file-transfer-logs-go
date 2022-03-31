@@ -41,7 +41,7 @@ func (s *sender) send(requestBody []byte) error {
 	url := fmt.Sprintf("%s/api/v1/file_transfer/machine_pair/%s/logs/", s.url, s.machinePairID)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(requestBody))
 	if err != nil {
-		return fmt.Errorf("creating request: %v", err)
+		return fmt.Errorf("creating request: %w", err)
 	}
 
 	req.Header.Add("Authorization-Token", s.accessToken)
@@ -50,7 +50,7 @@ func (s *sender) send(requestBody []byte) error {
 	client := http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("sending request: %v", err)
+		return fmt.Errorf("sending request: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -58,7 +58,7 @@ func (s *sender) send(requestBody []byte) error {
 
 	err = json.NewDecoder(resp.Body).Decode(&data)
 	if err != nil {
-		return fmt.Errorf("response: %v", err)
+		return fmt.Errorf("response: %w", err)
 	}
 
 	switch resp.StatusCode {
@@ -80,7 +80,6 @@ func (s *sender) send(requestBody []byte) error {
 
 	case http.StatusUnauthorized:
 		return fmt.Errorf("error-401: %v", data.Error)
-
 	}
 	return fmt.Errorf("Error Response: %v", resp.StatusCode)
 }

@@ -1,0 +1,12 @@
+definitions:
+  steps:
+    - step: &lint
+        name: Lint code
+        image: golangci/golangci-lint:v1.45.2
+        script:
+          - golangci-lint run ./... -v --timeout 3m --config .golangci.yml
+
+pipelines:
+  default:
+    - step:
+        <<: *lint
