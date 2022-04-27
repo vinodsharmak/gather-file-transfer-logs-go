@@ -1,0 +1,65 @@
+definitions:
+  steps:
+    - step: &lint
+        name: Lint code
+        image: golangci/golangci-lint:v1.45.2
+        script:
+          - golangci-lint run ./... -v --timeout 3m --config .golangci.yml
+    - step: &test
+        name: Go Test
+        image: golang:1.16.9
+        script:
+        - go test -v ./...
+    - step: &code-coverage
+        name: Generate Go Code Coverage
+        image: golang:1.16.9
+        script:
+          - go test -short -coverprofile=./cov.out ./...
+          - go tool cover -func cov.out > result.txt
+          - pipe: atlassian/slack-notify:1.1.0
+            variables:
+              WEBHOOK_URL: $CPAAS_CODE_COVERAGE_WEBHOOK
+              MESSAGE: '$(cat result.txt)'
+              PRETEXT: "Code Coverage Report for $BITBUCKET_REPO_SLUG, branch: $BITBUCKET_BRANCH"
+
+pipelines:
+  default:
+  - parallel:
+      - step:
+          <<: *test
+      - step:
+          <<: *lint
+  pull-requests:
+    '**':
+    - parallel:
+      - step:
+          <<: *test
+      - step:
+          <<: *lint
+      - step:
+          <<: *code-coverage
+  branches:
+    develop:
+    - parallel:
+      - step:
+          <<: *code-coverage
+      - step:
+          <<: *test
+      - step:
+          <<: *lint
+    staging:
+    - parallel:
+      - step:
+          <<: *code-coverage
+      - step:
+          <<: *test
+      - step:
+          <<: *lint
+    master:
+    - parallel:
+      - step:
+          <<: *code-coverage
+      - step:
+          <<: *test
+      - step:
+          <<: *lint
