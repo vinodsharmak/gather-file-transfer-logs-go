@@ -1,4 +1,4 @@
-module bitbucket.org/gath3rio/gather-file-transfer-logs-go
+module github.com/vinodsharmak/gather-file-transfer-logs-go
 
 go 1.16
 
